@@ -186,13 +186,19 @@ select_chapter()
     echo -e -n "Select chapter: "
     read selected_chapter_start selected_chapter_end
     echo
+#   echo "Debug : $selected_chapter_end"
+    if [ "$selected_chapter_end" == ""] ; then
+	selected_chapter_end=0
+    fi
+#   echo "Debug : $selected_chapter_end"
 
-    # if ! [ "$selected_chapter_start" =~ ^[0-9]+$ ] || [ "$selected_chapter_end" =~ ^[0-9]+$ ] ; then
-        # echo "Sorry, please enter an integer"
-        # exit 1
-    # fi
 
-    if [ ! $selected_chapter_end -eq 0 ] ; then
+#    if ! [ "$selected_chapter_start" =~ ^[0-9]+$ ] || [ "$selected_chapter_end" =~ ^[0-9]+$ ] ; then
+#        echo "Sorry, please enter an integer"
+#        exit 1
+#    fi
+
+    if [ $selected_chapter_end -ne 0 ] ; then
         if [ $selected_chapter_start -ge $selected_chapter_end ] || [ $selected_chapter_start -eq $selected_chapter_end ]; then
             echo "please make sure that when selecting a range of chapters that the first number isn't the same or larger than the last one"
             exit 1
@@ -246,6 +252,8 @@ download_chapter()
             echo "Opening manga in Zathura"
             zathura "$image_dir$selected_manga_name"-"$selected_chapter_name".cbz
 
+            chapter_select
+
         fi
     else # downloading a range of chapters
 
@@ -273,6 +281,7 @@ download_chapter()
                 i=$offset
                 for each in "${chapter_images[@]}"
                 do
+#                   echo "Debug: "
                     curl -s $each -o "$image_dir$selected_manga_name-$i.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
                     if [[ $silent != true ]] ; then
                         ((j=i-$offset+1))
@@ -299,8 +308,6 @@ download_chapter()
         done
 
     fi
-
-    chapter_select
 
 }
 
@@ -338,7 +345,7 @@ chapter_select()
 main()
 {
 
-    if [ -f $image_dir ] ; then
+    if [ ! -d $image_dir ] ; then
         mkdir $image_dir
     fi
 
