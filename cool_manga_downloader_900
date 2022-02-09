@@ -14,7 +14,13 @@ RED='\033[0;31m'
 ORANGE='\033[0;33m'
 RESET='\033[0;37m'
 
-
+help_text()
+{
+    echo " -h | gives you this help text then exits the program"
+    echo " -s | silent mode, this prints not as much text"
+    echo " -M | mass downloads an entire manga"
+    echo "If you have an option that you want PLEASE tell me !!!"
+}
 
 while getopts "hsM" opt; do
     case $opt in
@@ -106,7 +112,7 @@ select_manga()
         mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'a.chapter-name.text-nowrap attr{href}')
         mapfile -t chapter_list < <(curl -s $manga_id | pup -p 'a.chapter-name.text-nowrap text{}')
     elif [[ "$manga_id" == *"https://mangakakalot"* ]] ; then
-	mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a attr{href}')
+    	mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a attr{href}')
         mapfile -t chapter_list < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a text{}')
     else
 	echo "Please go to https://mangakakalot.com and search for your manga then let me know the link and that you got this error, thanks!!"
@@ -133,10 +139,12 @@ download_manga()
         chapter_count=$offset
         ((chapter_count--))
 
+        i=0
         for id in ${chapter_ids[@]} # Changing the image locations id
         do
             if [[ $silent != true ]] ; then
                 echo -e "Downloading chapter ${chapter_list[i]}"
+                echo -e "It's url : ${chapter_ids[i]}"
             fi
             mapfile -t chapter_images < <(curl -s $id | pup "div.container-chapter-reader img attr{src}")
 
@@ -150,8 +158,8 @@ download_manga()
                     if [[ $silent != true ]] ; then
                         echo -e "Downloading $selected_manga_name-Chapter$chapter_count-$page_count.jpg"
                     fi
-                    # echo "Debug: Not downloading"
-                    curl -s $image_location -o "$image_dir$selected_manga_name-Chapter$chapter_count-$page_count.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
+                    # echo "Debug: downloading"
+#                    curl -s $image_location -o "$image_dir$selected_manga_name-Chapter$chapter_count-$page_count.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
 
                 else
 
