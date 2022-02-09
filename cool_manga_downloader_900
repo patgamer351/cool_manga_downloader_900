@@ -68,9 +68,19 @@ select_manga()
         ((i++))
     done
 
+    if (( $i % 2 == 0)) ; then
+        echo -e "${RED}[q] quit"
+    else
+	echo -e "${ORANGE}[q] quit"
+    fi
+
     echo -e ${RESET}
     echo -e -n "Enter Number: "
     read manga_number
+
+    if (( manga_number == "q")) || (( manga_number == "Q")) ; then
+	    exit -1
+    fi
 
     if ! [[ "$manga_number" =~ ^[0-9]+$ ]]
     then
@@ -83,13 +93,24 @@ select_manga()
 
     manga_id=${manga_ids[$manga_number]}
 
+    echo
+    echo -e "The manga link is $manga_id"
+    echo
+
     selected_manga_name=${mangas[$manga_number]}
     selected_manga_name="${selected_manga_name// /_}"
     echo
 
-    mapfile -t chapter_list < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a text{}')
-    mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a attr{href}')
 
+    if [[ "$manga_id" == *"https://readmanganato"* ]] ; then
+        mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'a.chapter-name.text-nowrap attr{href}')
+        mapfile -t chapter_list < <(curl -s $manga_id | pup -p 'a.chapter-name.text-nowrap text{}')
+    elif [[ "$manga_id" == *"https://mangakakalot"* ]] ; then
+	mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a attr{href}')
+        mapfile -t chapter_list < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a text{}')
+    else
+	echo "Please go to https://mangakakalot.com and search for your manga then let me know the link and that you got this error, thanks!!"
+    fi
 }
 
 
