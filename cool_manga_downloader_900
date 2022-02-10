@@ -1,7 +1,7 @@
 #!/bin/bash
 
-manga_link="https://mangakakalot.com/manga"
-manga_search_link="https://mangakakalot.com/search/story/"
+manga_link='https://mangakakalot.com/manga'
+manga_search_link='https://mangakakalot.com/search/story/'
 image_dir="$HOME/.cache/cool_manga_downloader_900/"
 offset=1000
 selected_chapter_end=0
@@ -139,6 +139,8 @@ download_manga()
         chapter_count=$offset
         ((chapter_count--))
 
+        mkdir $HOME/.cache/cool_manga_downloader_900/$selected_manga_name
+
         i=0
         for id in ${chapter_ids[@]} # Changing the image locations id
         do
@@ -150,9 +152,7 @@ download_manga()
 
             page_count=$offset
 
-	    mkdir $image_dir$selected_manga_name
-
-	    for image_location in ${chapter_images[@]} # Downloading image
+            for image_location in ${chapter_images[@]} # Downloading images
             do
 
                 if [ ! -f "$image_dir$selected_manga_name/$selected_manga_name-Chapter$chapter_count-$page_count.jpg" ]; then
@@ -179,13 +179,15 @@ download_manga()
 
         done
 
+        cp $image_dir$selected_manga_name/$selected_chapter_name*.jpg $image_dir
+
         if [[ $silent != true ]] ; then
             echo "creating the manga with downloaded images"
         fi
 
-	cp $image_dir$selected_manga_name*.jpg $image_dir
+        zip -q $image_dir$selected_manga_name.cbz $image_dir*.jpg
 
-	zip -q $image_dir.cbz $image_dir$selected_manga_name*.jpg
+        rm $image_dir*.jpg
 
         echo "Done!!"
         echo "Opening in Zathura"
