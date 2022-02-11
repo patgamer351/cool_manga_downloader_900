@@ -213,17 +213,28 @@ select_chapter()
         ((i--))
     done
 
+
+    if (( $i % 2 == 0)) ; then
+	echo -e "$RED[q] quit"
+    else
+	echo -e "$ORANGE[q] quit"
+    fi
+
     echo -e ${RESET}
     echo -e "Enter \$starting_chapter \$last_chapter to download a range between the two, or just enter one number to download the one chapter"
     echo
     echo -e -n "Select chapter: "
     read selected_chapter_start selected_chapter_end
     echo
-#   echo "Debug : $selected_chapter_end"
+
+
+    if (($selected_chapter_start == "q")) ; then
+    	exit -1
+    fi
+
     if [ "$selected_chapter_end" == ""] ; then
 	selected_chapter_end=0
     fi
-#   echo "Debug : $selected_chapter_end"
 
 
 #    if ! [ "$selected_chapter_start" =~ ^[0-9]+$ ] || [ "$selected_chapter_end" =~ ^[0-9]+$ ] ; then
@@ -238,7 +249,6 @@ select_chapter()
         fi
     fi
 
-    # selected_chapter_ids=
     selected_chapter_name=${chapter_list[${#chapter_list[@]}-$selected_chapter_start]}
     selected_chapter_name="${selected_chapter_name// /_}"
 }
@@ -314,7 +324,6 @@ download_chapter()
                 i=$offset
                 for each in "${chapter_images[@]}"
                 do
-#                   echo "Debug: "
                     curl -s $each -o "$image_dir$selected_manga_name-$i.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
                     if [[ $silent != true ]] ; then
                         ((j=i-$offset+1))
