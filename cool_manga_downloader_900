@@ -5,24 +5,24 @@ manga_search_link='https://mangakakalot.com/search/story/'
 image_dir="$HOME/.cache/cool_manga_downloader_900/"
 offset=1000
 selected_chapter_end=0
-
-# image_dir="$HOME/.cache/manga-cli/"
-# mangaLink=https://mangakakalot.com/chapter/sn926977/chapter_1 # used for testing
+silent=false
 
 # Colors
 RED='\033[0;31m'
 ORANGE='\033[0;33m'
 RESET='\033[0;37m'
 
+
 help_text()
 {
     echo " -h | gives you this help text then exits the program"
     echo " -s | silent mode, this prints not as much text"
     echo " -M | mass downloads an entire manga"
-    echo "If you have an option that you want PLEASE tell me !!!"
+    echo "If you have an option that you want please tell me !!"
 }
 
-while getopts "hsM" opt; do
+
+while getopts "hsMU" opt; do
     case $opt in
     h)
         help_text
@@ -33,6 +33,9 @@ while getopts "hsM" opt; do
         ;;
     M)
         download_manga_selected=true
+        ;;
+    U)
+        use_manga_url=true
         ;;
     \?)
         echo "Invalid option: -$OPTARG" >&2
@@ -47,75 +50,95 @@ done
 
 select_manga()
 {
-    echo -n -e "Search manga: " 
-    read manga_name
-    echo
-
-    manga_name="${manga_name// /_}"
-
-    mapfile -t mangas    < <(curl -s $manga_search_link$manga_name | pup -p "div.story_item_right h3 a text{}")
-    mapfile -t manga_ids < <(curl -s $manga_search_link$manga_name | pup -p "div.story_item_right h3 a attr{href}")
-
-    if [ "${mangas[0]}" == "" ] ; then
-        echo "Sorry, wasn't able to find a manga named $manga_name"
+    if [[ ! $use_manga_url == false ]]; then
+        echo -n -e "Search manga: " 
+        read manga_name
         echo
-        exit 1
-    fi
 
-    i=1
-    for each in "${mangas[@]}"
-    do
-        if (( $i % 2 == 0 ))
-        then
-            echo -e "${RED}[$i] $each"
-        else
-            echo -e "${ORANGE}[$i] $each"
+        manga_name="${manga_name// /_}"
+
+        mapfile -t mangas    < <(curl -s $manga_search_link$manga_name | pup -p "div.story_item_right h3 a text{}")
+        mapfile -t manga_ids < <(curl -s $manga_search_link$manga_name | pup -p "div.story_item_right h3 a attr{href}")
+
+        if [ "${mangas[0]}" == "" ] ; then
+            echo "Sorry, wasn't able to find a manga named $manga_name"
+            echo
+            exit 1
         fi
-        ((i++))
-    done
 
-    if (( $i % 2 == 0)) ; then
-        echo -e "${RED}[q] quit"
+        i=1
+        for each in "${mangas[@]}"
+        do
+            if (( $i % 2 == 0 ))
+            then
+                echo -e "$RED[$i] $each"
+            else
+                echo -e "$ORANGE[$i] $each"
+            fi
+            ((i++))
+        done
+
+        if (( $i % 2 == 0)) ; then
+            echo -e "$RED[a] search for another anime"
+        else
+        	echo -e "$ORANGE[a] search for another anime"
+        fi
+
+        if (( $i % 2 == 0)) ; then
+            echo -e "$ORANGE[q] quit"
+        else
+        	echo -e "$RED[q] quit"
+        fi
+
+        echo -e ${RESET}
+        echo -e -n "Enter Number: "
+        read manga_number
+
+        if [[ "$manga_number" == "a" ]] || [[ "$manga_number" == "A" ]] ; then
+    	    select_manga
+            return [n]
+        fi
+
+        if [[ "$manga_number" == "q" ]] || [[ "$manga_number" == "Q" ]] ; then
+    	    exit -1
+        fi
+
+        if ! [[ "$manga_number" =~ ^[0-9]+$ ]]
+        then
+            echo "Sorry, please enter an integer"
+            exit 1
+        fi
+
+
+        manga_number=$((manga_number-1))
+
+        manga_id=${manga_ids[$manga_number]}
+
+        echo
+        echo -e "The manga link is $manga_id"
+        echo
+
+        selected_manga_name=${mangas[$manga_number]}
+
     else
-	echo -e "${ORANGE}[q] quit"
+        echo -n -e "Enter url: "
+        read manga_id
+        selected_manga_name=$(curl -s https://readmanganato.com/manga-qj951518 | pup "h1 text{}")
     fi
 
-    echo -e ${RESET}
-    echo -e -n "Enter Number: "
-    read manga_number
-
-    if (( manga_number == "q")) || (( manga_number == "Q")) ; then
-	    exit -1
-    fi
-
-    if ! [[ "$manga_number" =~ ^[0-9]+$ ]]
-    then
-        echo "Sorry, please enter an integer"
-        exit 1
-    fi
-
-
-    manga_number=$((manga_number-1))
-
-    manga_id=${manga_ids[$manga_number]}
-
-    echo
-    echo -e "The manga link is $manga_id"
-    echo
-
-    selected_manga_name=${mangas[$manga_number]}
     selected_manga_name="${selected_manga_name// /_}"
-    echo
-
-
     if [[ "$manga_id" == *"https://readmanganato"* ]] ; then
-        mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'a.chapter-name.text-nowrap attr{href}')
-        mapfile -t chapter_list < <(curl -s $manga_id | pup -p 'a.chapter-name.text-nowrap text{}')
+        mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'a.chapter-name attr{href}')
+        mapfile -t chapter_list < <(curl -s $manga_id | pup -p 'a.chapter-name text{}')
     elif [[ "$manga_id" == *"https://mangakakalot"* ]] ; then
     	mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a attr{href}')
         mapfile -t chapter_list < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a text{}')
     else
-	echo "Please go to https://mangakakalot.com and search for your manga then let me know the link and that you got this error, thanks!!"
+    	echo "Please go to https://mangakakalot.com and search for your manga then let me know the link and that you got this error, thanks!!"
+    fi
+
+    if [ ! -d $image_dir$selected_manga_name ] ; then
+        mkdir $image_dir$selected_manga_name
     fi
 }
 
@@ -136,47 +159,31 @@ download_manga()
             echo "Downloading $selected_manga_name"
         fi
 
-        chapter_count=$offset
-        ((chapter_count--))
-
-        mkdir $HOME/.cache/cool_manga_downloader_900/$selected_manga_name
-
-        i=0
-        for id in ${chapter_ids[@]} # Changing the image locations id
-        do
+        ((chapter_count=$offset+1))
+        for ((i=${#chapter_ids[@]}-1; i>=0; i--)); do
             if [[ $silent != true ]] ; then
-                echo -e "Downloading chapter ${chapter_list[i]}"
-                echo -e "It's url : ${chapter_ids[i]}"
+                echo "Downloading ${chapter_list[$i]}"
+                echo "It's link ${chapter_ids[$i]}"
             fi
-            mapfile -t chapter_images < <(curl -s $id | pup "div.container-chapter-reader img attr{src}")
-
-            page_count=$offset
-
-            for image_location in ${chapter_images[@]} # Downloading images
+            mapfile -t chapter_images < <(curl -s ${chapter_ids[$i]} | pup -p "div.container-chapter-reader img attr{src}")
+            ((page_count=$offset+1))
+            for image_location in ${chapter_images[@]}
             do
-
-                if [ ! -f "$image_dir$selected_manga_name/$selected_manga_name-Chapter$chapter_count-$page_count.jpg" ]; then
-
+                if [ ! -f "$image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg" ]; then
                     if [[ $silent != true ]] ; then
-                        echo -e "Downloading $selected_manga_name-Chapter$chapter_count-$page_count.jpg"
+                        echo "Downloading $selected_manga_name-chapter$chapter_count-$page_count.jpg"
                     fi
-                    # echo "Debug: downloading"
-                    curl -s $image_location -o "$image_dir$selected_manga_name/$selected_manga_name-Chapter$chapter_count-$page_count.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
-
+                    # echo "not downloading"
+                    curl -s $image_location -o "$image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
                 else
-
                     if [[ $silent != true ]] ; then
-                        echo -e "$selected_manga_name-Chapter$chapter_count-$page_count.jpg already exists"
+                        echo "Already downloaded $image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg"
                     fi
                 fi
-
                 ((page_count++))
 
             done
-
-            ((i++))
-            ((chapter_count--))
-
+            ((chapter_count++))
         done
 
         cp $image_dir$selected_manga_name/$selected_chapter_name*.jpg $image_dir
@@ -206,19 +213,25 @@ select_chapter()
     do
         if (( $i % 2 == 0 )) 
         then
-            echo -e "$RED[$i]$each"
+            echo -e "$RED[$i] $each"
         else
-            echo -e "$ORANGE[$i]$each"
+            echo -e "$ORANGE[$i] $each"
         fi
         ((i--))
     done
 
+    if (( $i % 2 == 0)) ; then
+    	echo -e "$RED[a] search for another manga"
+    else
+    	echo -e "$ORANGE[a] search for another manga"
+    fi
 
     if (( $i % 2 == 0)) ; then
-	echo -e "$RED[q] quit"
+    	echo -e "$ORANGE[q] quit"
     else
-	echo -e "$ORANGE[q] quit"
+    	echo -e "$RED[q] quit"
     fi
+
 
     echo -e ${RESET}
     echo -e "Enter \$starting_chapter \$last_chapter to download a range between the two, or just enter one number to download the one chapter"
@@ -226,132 +239,150 @@ select_chapter()
     echo -e -n "Select chapter: "
     read selected_chapter_start selected_chapter_end
     echo
+    # ((selected_chapter_start--))
 
-
-    if (($selected_chapter_start == "q")) ; then
+    if [[ "$selected_chapter_start" == "a" ]]; then
+    	select_manga
+        return 1
+    elif [[ "$selected_chapter_start" == "q" ]]; then
     	exit -1
     fi
 
-    if [ "$selected_chapter_end" == ""] ; then
-	selected_chapter_end=0
+    if [[ -z $selected_chapter_end ]]; then
+    	selected_chapter_end=0
     fi
 
-
-#    if ! [ "$selected_chapter_start" =~ ^[0-9]+$ ] || [ "$selected_chapter_end" =~ ^[0-9]+$ ] ; then
-#        echo "Sorry, please enter an integer"
-#        exit 1
-#    fi
-
-    if [ $selected_chapter_end -ne 0 ] ; then
-        if [ $selected_chapter_start -ge $selected_chapter_end ] || [ $selected_chapter_start -eq $selected_chapter_end ]; then
+    if [[ $selected_chapter_end -ne 0 ]] ; then
+        if [[ $selected_chapter_start -ge $selected_chapter_end ]] || [[ $selected_chapter_start -eq $selected_chapter_end ]]; then
             echo "please make sure that when selecting a range of chapters that the first number isn't the same or larger than the last one"
-            exit 1
+            exit -1
         fi
     fi
 
+    if [[ $selected_chapter_start > ${#chapter_list[@]} ]]; then
+        echo -e "Error, you entered a number that was larger then the amount of chapters that there are"
+        exit -1
+    fi
     selected_chapter_name=${chapter_list[${#chapter_list[@]}-$selected_chapter_start]}
     selected_chapter_name="${selected_chapter_name// /_}"
 }
 
 
-
 download_chapter()
 {
-    if [ $selected_chapter_end -eq 0 ] ; then # downloading a single chapter
 
-        if [ -f "$image_dir$selected_manga_name-$selected_chapter_name.cbz" ] || [ -f "$image_dir$selected_chapter_name.cbz" ]; then
-            echo -e "Manga file has already been previously downloaded before"
-            zathura "$image_dir$selected_manga_name-$selected_chapter_name.cbz"
+    if [ ! -f "$image_dir$selected_chapter_name.cbz" ]; then
+        if [ $silent == true ] ; then
+            echo "Downloading $selected_manga_name"
+        fi
 
-        else
+        mapfile -t chapter_ids  < <(curl -s $manga_id | pup -p 'div.chapter-list div.row span a attr{href}')
 
-            echo "Downloading pages!"
-            echo
-            mapfile -t chapter_images < <(curl -s ${chapter_ids[${#chapter_ids[@]}-$selected_chapter_start]} | pup "div.container-chapter-reader img attr{src}")
+        if [ $selected_chapter_end -ne 0 ]; then # downloading multiple chapters
+            ((chapter_count=$offset+$selected_chapter_start))
+            # ((chapter_count--))
+            for ((i=$selected_chapter_start; i<=$selected_chapter_end; i++)); do
 
-            i=$offset #help making sure the pages are in order
-            for each in "${chapter_images[@]}"
-            do
-                curl -s $each -o "$image_dir$selected_manga_name-$i.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
-                if [[ $silent != true ]] ; then
-                    ((j=i-$offset+1))
-                    echo -e "Downloading image $j"
+                if [ ! $silent == true ]; then
+                    echo "Downloading chapter: ${chapter_list[${#chapter_ids[@]}-$i]}"
+                    echo "Chapter link: ${chapter_ids[${#chapter_ids[@]}-$i]}"
                 fi
-                ((i++))
+                mapfile -t chapter_images < <(curl -s ${chapter_ids[${#chapter_ids[@]}-$i]} | pup -p "div.container-chapter-reader img attr{src}")
+                page_count=$offset
+                for image_location in ${chapter_images[@]}; do
+                    if [ ! -f "$image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg" ]; then
+                        if [ ! $silent == true ]; then
+                            echo "Downloading $selected_manga_name-chapter$chapter_count-$page_count.jpg"
+                        fi
+
+                        curl -s $image_location -o "$image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
+
+                    else
+                        if [ ! $silent == true ]; then
+                            echo "Already downloaded $image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg"
+                        fi
+                    fi
+                    ((page_count++))
+                done
+                ((chapter_count++))
             done
 
-            if [[ $silent != true ]] ; then
-                echo
-                echo "Compressing into a .cbz file"
-            fi
+            for ((i=$selected_chapter_start+$offset; i<=$selected_chapter_end+$offset; i++)); do
 
-            zip -q "$image_dir$selected_manga_name-$selected_chapter_name.cbz" $image_dir*.jpg
-            if [[ $silent != true ]] ; then
-                echo "Removing .jpg's"
-            fi
-            rm $image_dir*.jpg
-
-            echo
-            echo "Opening manga in Zathura"
-            zathura "$image_dir$selected_manga_name"-"$selected_chapter_name".cbz
-
-            chapter_select
-
-        fi
-    else # downloading a range of chapters
-
-        chapter_count=$selected_chapter_start
-        ((selected_chapter_end++))
-
-        while [ ! $chapter_count -eq $selected_chapter_end ]
-        do
-
-            mapfile -t chapter_images < <(curl -s ${chapter_ids[${#chapter_list[@]}-$chapter_count]} | pup "div.container-chapter-reader img attr{src}")
-
-            chapter_name=${chapter_list[${#chapter_list[@]}-$chapter_count]}
-            chapter_name="${chapter_name// /_}"
-    
-            echo -e "Downloading chapter $chapter_name"
-            echo
-
-            if [ -f "$image_dir$selected_manga_name-$chapter_name.cbz" ] || [ -f "$image_dir$selected_manga_name.cbz" ]; then
-
-                echo "Either $selected_manga_name.cbz or $selected_manga_name-$chapter_name.cbz has already been downloaded before"
-                echo
-
-            else
-
-                i=$offset
-                for each in "${chapter_images[@]}"
-                do
-                    curl -s $each -o "$image_dir$selected_manga_name-$i.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
-                    if [[ $silent != true ]] ; then
-                        ((j=i-$offset+1))
-                        echo -e "Downloading image $j"
-                    fi
-                    ((i++))
-                done
+                cp $image_dir$selected_manga_name/$selected_manga_name-chapter$i*.jpg $image_dir
 
                 if [[ $silent != true ]] ; then
-                    echo
-                    echo "Compressing into a .cbz file"
+                    echo "creating the manga with downloaded images"
                 fi
 
-                zip -q "$image_dir$selected_manga_name-$chapter_name".cbz $image_dir*.jpg
-                if [[ $silent != true ]] ; then
-                    echo "Removing .jpg's"
-                fi
+                zip -q $image_dir$selected_manga_name-chapter$i.cbz $image_dir*.jpg
+
                 rm $image_dir*.jpg
 
+            done
+
+            echo "Done!!"
+            echo "Opening in Zathura"
+            ((i=$selected_chapter_start+$offset))
+            zathura "$image_dir$selected_manga_name-$i.cbz"
+
+
+
+        else # downloading multiple chapters
+
+            mapfile -t chapter_images < <(curl -s ${chapter_ids[${#chapter_ids[@]}-$selected_chapter_start]} | pup -p "div.container-chapter-reader img attr{src}")
+            ((chapter_count=$offset+$selected_chapter_start))
+            if [ ! $silent == true ]; then
+                echo "Chapter link: ${chapter_ids[${#chapter_ids[@]}-$selected_chapter_start]}"
+            fi
+            page_count=$offset
+            for image_location in ${chapter_images[@]}; do
+                if [ ! -f "$image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg" ]; then
+                    if [ ! $silent == true ]; then
+                        echo "Downloading $selected_manga_name-chapter$chapter_count-$page_count.jpg"
+                    fi
+
+                    curl -s $image_location -o "$image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg" -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:95.0) Gecko/20100101 Firefox/95.0' -H 'Accept: image/avif,image/webp,*/*' -H 'Accept-Language: en-US,en;q=0.5' -H 'Accept-Encoding: gzip, deflate, br' -H 'Connection: keep-alive' -H 'Referer: https://readmanganato.com/' -H 'Sec-Fetch-Dest: image' -H 'Sec-Fetch-Mode: no-cors' -H 'Sec-Fetch-Site: cross-site' -H 'If-Modified-Since: Fri, 18 May 2018 10:55:14 GMT' -H 'If-None-Match: "5afeb112-19718"' -H 'Cache-Control: max-age=0'
+
+                else
+                    if [ ! $silent == true ]; then
+                        echo "Already downloaded $image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg"
+                    fi
+                fi
+                ((page_count++))
+            done
+
+            ((i=$selected_chapter_start+$offset))
+            cp $image_dir$selected_manga_name/$selected_manga_name-chapter$i*.jpg $image_dir
+            if [[ $silent != true ]] ; then
+                echo "creating the manga with downloaded images"
             fi
 
-            ((chapter_count++))
+            zip -q $image_dir$selected_manga_name-chapter$i.cbz $image_dir*.jpg
 
-        done
+            # rm $image_dir*.jpg
 
+            echo -e "Done!!"
+            echo -e "Opening in Zathura"
+            if [ ! -f "$image_dir$selected_manga_name-chapter$i.cbz" ]; then
+                echo -e "Error cant find the chapter"
+            else 
+                echo -e "Can find the chapter"
+            fi
+            echo -e "Debug: $image_dir$selected_manga_name-chapter$i.cbz"
+            ((i=$selected_chapter_start+$offset+1))
+            zathura "$image_dir$selected_manga_name-chapter$i.cbz"
+
+        fi
+    else # if the whole manga has alorady been downloaded
+        echo "Already downloaded $selected_manga_name"
+        echo "Opening in Zathura"
+        ((i=$selected_chapter_start+$offset+1))
+        zathura "$image_dir$selected_manga_name-chapter$i.cbz"
     fi
-
+    chapter_select
 }
+
 
 
 chapter_select()
@@ -384,6 +415,7 @@ chapter_select()
 }
 
 
+
 main()
 {
 
@@ -403,6 +435,7 @@ main()
     download_chapter
 
 }
+
 
 
 main
