@@ -364,12 +364,6 @@ download_chapter()
 
             echo -e "Done!!"
             echo -e "Opening in Zathura"
-            if [ ! -f "$image_dir$selected_manga_name-chapter$i.cbz" ]; then
-                echo -e "Error cant find the chapter"
-            else 
-                echo -e "Can find the chapter"
-            fi
-            echo -e "Debug: $image_dir$selected_manga_name-chapter$i.cbz"
             ((i=$selected_chapter_start+$offset+1))
             zathura "$image_dir$selected_manga_name-chapter$i.cbz"
 
