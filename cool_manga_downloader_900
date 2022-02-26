@@ -15,10 +15,13 @@ RESET='\033[0;37m'
 
 help_text()
 {
-    echo " -h | gives you this help text then exits the program"
-    echo " -s | silent mode, this prints not as much text"
-    echo " -M | mass downloads an entire manga"
-    echo "If you have an option that you want please tell me !!"
+    echo -e "Made by Patrick C, feel free to do whatever you want with this code :D"
+    echo -e " -h | gives you this help text then exits the program"
+    echo -e " -s | silent mode, this prints not as much text"
+    echo -e " -M | mass downloads an entire manga"
+    echo -e " -U | downloads a manga except you enter the url instead of searching for it"
+    echo -e " -n | only downloads the manga/chapters and doesnt open it with zathura"
+    echo -e "If you have an option that you want please tell me !!"
 }
 
 
@@ -37,8 +40,11 @@ while getopts "hsMU" opt; do
     U)
         use_manga_url=true
         ;;
+    n)
+        no_zathura=true
+        ;;
     \?)
-        echo "Invalid option: -$OPTARG" >&2
+        echo -e "Invalid option: -$OPTARG" >&2
         echo
         help_text
         exit 1
@@ -46,6 +52,12 @@ while getopts "hsMU" opt; do
     esac
 done
 
+Open_In_Zathura()
+{
+    link=$1
+    echo "Opening in Zathua"
+    zathura "$link"
+}
 
 
 select_manga()
@@ -61,7 +73,7 @@ select_manga()
         mapfile -t manga_ids < <(curl -s $manga_search_link$manga_name | pup -p "div.story_item_right h3 a attr{href}")
 
         if [ "${mangas[0]}" == "" ] ; then
-            echo "Sorry, wasn't able to find a manga named $manga_name"
+            echo -e "Sorry, wasn't able to find a manga named $manga_name"
             echo
             exit 1
         fi
@@ -150,13 +162,14 @@ download_manga()
     if [ -f "$image_dir$selected_manga_name.cbz" ] ; then
 
         echo "Already previously downloaded"
-
-        zathura "$image_dir$selected_manga_name.cbz"
+        if [ ! no_zathura == true ]; then
+            Open_In_Zathura "$image_dir$selected_manga_name.cbz"
+        fi
 
     else
 
         if [[ $silent == true ]] ; then
-            echo "Downloading $selected_manga_name"
+            echo -e "Downloading $selected_manga_name"
         fi
 
         ((chapter_count=$offset+1))
@@ -196,9 +209,9 @@ download_manga()
 
         rm $image_dir*.jpg
 
-        echo "Done!!"
-        echo "Opening in Zathura"
-        zathura "$image_dir$selected_manga_name.cbz"
+        if [ ! no_zathura == true ]; then
+            Open_In_Zathura "$image_dir$selected_manga_name.cbz"
+        fi
     fi
 
 }
@@ -288,7 +301,7 @@ download_chapter()
                     echo "Chapter link: ${chapter_ids[${#chapter_ids[@]}-$i]}"
                 fi
                 mapfile -t chapter_images < <(curl -s ${chapter_ids[${#chapter_ids[@]}-$i]} | pup -p "div.container-chapter-reader img attr{src}")
-                page_count=$offset
+                ((page_count=$offset+1))
                 for image_location in ${chapter_images[@]}; do
                     if [ ! -f "$image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg" ]; then
                         if [ ! $silent == true ]; then
@@ -321,10 +334,10 @@ download_chapter()
 
             done
 
-            echo "Done!!"
-            echo "Opening in Zathura"
-            ((i=$selected_chapter_start+$offset))
-            zathura "$image_dir$selected_manga_name-$i.cbz"
+            if [ ! no_zathura == true ]; then
+                ((i=$offset+$selected_chapter_start))
+                Open_In_Zathura "$image_dir$selected_manga_name-$i.cbz"
+            fi
 
 
 
@@ -335,7 +348,7 @@ download_chapter()
             if [ ! $silent == true ]; then
                 echo "Chapter link: ${chapter_ids[${#chapter_ids[@]}-$selected_chapter_start]}"
             fi
-            page_count=$offset
+            ((page_count=$offset+1))
             for image_location in ${chapter_images[@]}; do
                 if [ ! -f "$image_dir$selected_manga_name/$selected_manga_name-chapter$chapter_count-$page_count.jpg" ]; then
                     if [ ! $silent == true ]; then
@@ -360,19 +373,22 @@ download_chapter()
 
             zip -q $image_dir$selected_manga_name-chapter$i.cbz $image_dir*.jpg
 
-            # rm $image_dir*.jpg
+            rm $image_dir*.jpg
 
-            echo -e "Done!!"
-            echo -e "Opening in Zathura"
-            ((i=$selected_chapter_start+$offset+1))
-            zathura "$image_dir$selected_manga_name-chapter$i.cbz"
+            if [ ! no_zathura == true ]; then
+                ((i=$offset+$selected_chapter_start))
+                Open_In_Zathura "$image_dir$selected_manga_name-chapter$i.cbz"
+            fi
 
         fi
     else # if the whole manga has alorady been downloaded
         echo "Already downloaded $selected_manga_name"
-        echo "Opening in Zathura"
-        ((i=$selected_chapter_start+$offset+1))
-        zathura "$image_dir$selected_manga_name-chapter$i.cbz"
+
+        if [ ! no_zathura == true ]; then
+            ((i=$offset+$selected_chapter_start))
+            Open_In_Zathura "$image_dir$selected_manga_name-chapter$i.cbz"
+        fi
+
     fi
     chapter_select
 }
