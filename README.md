@@ -5,7 +5,9 @@ This program stores both the images and the .cbz file at the same time in the .c
 
 INSTALL:
 
-git clone https://github.com/patgamer351/cool_manga_downloader_900
+git clone https://github.com/patgamer351/cool_manga_downloader_900.git
+
+cd cool_manga_downloader_900
 
 sudo make
 
