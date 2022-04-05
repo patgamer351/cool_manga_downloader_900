@@ -6,7 +6,7 @@ all: install
 install:
 	#cool manga downloader 900 itself
 	chmod +x cool_manga_downloader_900
-	cp cool_manga_downloader_900 $(DESTDIR)$(PREFIX)/bin/cool_manga_downloader_900
+	cp cool_manga_downloader_900 $(DESTDIR)$(PREFIX)/cool_manga_downloader_900
 
 	#dependancies
 	#pup
