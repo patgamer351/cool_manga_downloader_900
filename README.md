@@ -3,7 +3,7 @@ Downloads images from Mangakakalot and has been heavly inspired from manga-cli w
 
 This program stores both the images and the .cbz file at the same time in the .cache directory so that way you only need to download the manga once then update the images then compress the images into the .cbz
 
-INSTALL:
+INSTALL (For Linux):
 
 git clone https://github.com/patgamer351/cool_manga_downloader_900.git
 
